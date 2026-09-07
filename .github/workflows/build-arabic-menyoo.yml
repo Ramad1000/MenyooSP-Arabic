@@ -28,10 +28,22 @@ jobs:
           Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\Menu\ArabicTextRenderer.h" "Solution\source\Menu\ArabicTextRenderer.h" -Force
           Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\Menu\ArabicTextRenderer.cpp" "Solution\source\Menu\ArabicTextRenderer.cpp" -Force
           Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\_Build\bin\Release\menyooStuff\Language\Arabic.json" "Solution\source\_Build\bin\Release\menyooStuff\Language\Arabic.json" -Force
+
           $renderer = "Solution\source\Menu\ArabicTextRenderer.cpp"
           $text = Get-Content $renderer -Raw
           $text = $text.Replace('std::max(14.0f, display.y * cmd.sizeNorm)', '(std::max)(14.0f, display.y * cmd.sizeNorm)')
           Set-Content -Path $renderer -Value $text -Encoding utf8
+
+          # v2.5.0-a2 ships JobImporter.cpp with legacy Menu identifiers.
+          # Translate them to the renamed Menu API before compiling.
+          $job = "Solution\source\Submenus\Spooner\JobImporter.cpp"
+          $j = Get-Content $job -Raw
+          $j = $j.Replace('Menu::currentsub', 'Menu::activeSubmenu')
+          $j = $j.Replace('Menu::printingop', 'Menu::currentOptionCount')
+          $j = $j.Replace('Menu::currentopATM', 'Menu::activeOptionIndex')
+          $j = $j.Replace('Menu::SetSub_delayed', 'Menu::pendingSubmenu')
+          $j = $j.Replace('OptionY', 'currentOptionY')
+          Set-Content -Path $job -Value $j -Encoding utf8
 
       - name: Setup MSVC x64
         uses: ilammy/msvc-dev-cmd@v1
