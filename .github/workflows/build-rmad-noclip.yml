@@ -1,0 +1,58 @@
+name: Build RMAD NoClip
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'noclip/**'
+      - '.github/workflows/build-rmad-noclip.yml'
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Download ScriptHookV SDK
+        shell: pwsh
+        run: |
+          $url = 'https://dev-c.com/files/ScriptHookV_SDK_1.0.617.1a.zip'
+          Invoke-WebRequest -Uri $url -OutFile sdk.zip
+          Expand-Archive sdk.zip -DestinationPath sdkraw -Force
+          New-Item -ItemType Directory -Force -Path noclip/sdk/inc | Out-Null
+          New-Item -ItemType Directory -Force -Path noclip/sdk/lib | Out-Null
+          Copy-Item sdkraw/inc/* noclip/sdk/inc/ -Recurse -Force
+          Copy-Item sdkraw/lib/* noclip/sdk/lib/ -Recurse -Force
+
+      - name: Build x64 Release
+        shell: pwsh
+        run: msbuild noclip/RMAD_NoClip.vcxproj /p:Configuration=Release /p:Platform=x64 /m
+
+      - name: Package ASI
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Copy-Item noclip/bin/RMAD_NoClip.dll package/RMAD_NoClip.asi
+          @"
+          RMAD NoClip
+          -----------
+          F2       : Toggle NoClip
+          W/A/S/D  : Move
+          Space    : Up
+          Ctrl     : Down
+          Shift    : Fast
+          Alt      : Slow
+
+          Requires ScriptHookV.dll + dinput8.dll in the GTA V folder.
+          Story Mode only. Do not use in GTA Online.
+          "@ | Set-Content package/README.txt -Encoding UTF8
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RMAD-NoClip-Ready
+          path: package/*
