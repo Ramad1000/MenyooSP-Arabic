@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <cmath>
-#include "script.h"
+#include "main.h"
 #include "natives.h"
 
 static bool g_enabled = false;
@@ -75,7 +75,6 @@ static void tickNoClip() {
     pos = add3(pos, delta);
     ENTITY::SET_ENTITY_COORDS_NO_OFFSET(e, pos.x, pos.y, pos.z, FALSE, FALSE, FALSE);
 
-    // Keep the entity facing the camera's horizontal direction while moving.
     if ((GetAsyncKeyState('W') | GetAsyncKeyState('S') | GetAsyncKeyState('A') | GetAsyncKeyState('D')) & 0x8000) {
         const Vector3 rot = CAM::GET_GAMEPLAY_CAM_ROT(2);
         ENTITY::SET_ENTITY_HEADING(e, rot.z);
@@ -89,7 +88,7 @@ void ScriptMain() {
             else g_enabled = true;
         }
         if (g_enabled) tickNoClip();
-        WAIT(0);
+        scriptWait(0);
     }
 }
 
