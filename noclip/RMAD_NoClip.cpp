@@ -13,6 +13,12 @@ static Vector3 mul3(const Vector3& v, float s) {
     Vector3 r{}; r.x=v.x*s; r.y=v.y*s; r.z=v.z*s; return r;
 }
 
+static float normalizeHeading(float h) {
+    while (h >= 360.0f) h -= 360.0f;
+    while (h < 0.0f) h += 360.0f;
+    return h;
+}
+
 static void camBasis(Vector3& forward, Vector3& right) {
     const Vector3 rot = CAM::GET_GAMEPLAY_CAM_ROT(2);
     const float rz = rot.z * 0.01745329251994329577f;
@@ -75,9 +81,11 @@ static void tickNoClip() {
     pos = add3(pos, delta);
     ENTITY::SET_ENTITY_COORDS_NO_OFFSET(e, pos.x, pos.y, pos.z, FALSE, FALSE, FALSE);
 
+    // Face away from the camera so the player's back stays toward the camera,
+    // matching third-person FiveM-style noclip movement.
     if ((GetAsyncKeyState('W') | GetAsyncKeyState('S') | GetAsyncKeyState('A') | GetAsyncKeyState('D')) & 0x8000) {
         const Vector3 rot = CAM::GET_GAMEPLAY_CAM_ROT(2);
-        ENTITY::SET_ENTITY_HEADING(e, rot.z);
+        ENTITY::SET_ENTITY_HEADING(e, normalizeHeading(rot.z + 180.0f));
     }
 }
 
