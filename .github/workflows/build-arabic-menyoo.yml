@@ -1,0 +1,61 @@
+name: Build Arabic Menyoo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout Arabic overlay
+        uses: actions/checkout@v4
+
+      - name: Clone MenyooSP Development with submodules
+        shell: pwsh
+        run: |
+          git clone --recurse-submodules --branch Development https://github.com/itsjustcurtis/MenyooSP.git src
+
+      - name: Decode and apply Arabic Unicode modifications
+        shell: pwsh
+        run: |
+          $b64 = (Get-Content "$env:GITHUB_WORKSPACE\arabic-overlay.b64" -Raw).Trim()
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\arabic-overlay.zip", [Convert]::FromBase64String($b64))
+          Expand-Archive "$env:RUNNER_TEMP\arabic-overlay.zip" "$env:RUNNER_TEMP\arabic-overlay" -Force
+          Set-Location "$env:GITHUB_WORKSPACE\src"
+          git apply "$env:RUNNER_TEMP\arabic-overlay\patches\arabic.patch"
+          Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\Menu\ArabicTextRenderer.h" "Solution\source\Menu\ArabicTextRenderer.h" -Force
+          Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\Menu\ArabicTextRenderer.cpp" "Solution\source\Menu\ArabicTextRenderer.cpp" -Force
+          Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\_Build\bin\Release\menyooStuff\Language\Arabic.json" "Solution\source\_Build\bin\Release\menyooStuff\Language\Arabic.json" -Force
+
+      - name: Setup MSVC x64
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Generate Visual Studio solution
+        shell: cmd
+        working-directory: src
+        run: generate.bat
+
+      - name: Build Release x64
+        shell: cmd
+        working-directory: src
+        run: msbuild Solution\Menyoo.sln /m /p:Configuration=Release /p:Platform=x64
+
+      - name: Package ready Arabic build
+        shell: pwsh
+        run: |
+          $root = "$env:GITHUB_WORKSPACE\src\Solution\source\_Build\bin\Release"
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\artifact" | Out-Null
+          Copy-Item "$root\Menyoo.asi" "$env:GITHUB_WORKSPACE\artifact\Menyoo.asi" -Force
+          Copy-Item "$root\menyooStuff" "$env:GITHUB_WORKSPACE\artifact\menyooStuff" -Recurse -Force
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\artifact\*" -DestinationPath "$env:GITHUB_WORKSPACE\Menyoo-Arabic-Ready.zip" -Force
+
+      - name: Upload Menyoo Arabic package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Menyoo-Arabic-Ready
+          path: Menyoo-Arabic-Ready.zip
+          if-no-files-found: error
