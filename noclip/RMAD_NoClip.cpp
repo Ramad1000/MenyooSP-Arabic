@@ -52,7 +52,19 @@ static void disableNoClip() {
     g_enabled = false;
 }
 
+static void keepWeaponControlsEnabled() {
+    // Keep aiming/firing/reloading/weapon switching available while flying.
+    PAD::ENABLE_CONTROL_ACTION(0, 24, TRUE); // INPUT_ATTACK
+    PAD::ENABLE_CONTROL_ACTION(0, 25, TRUE); // INPUT_AIM
+    PAD::ENABLE_CONTROL_ACTION(0, 37, TRUE); // INPUT_SELECT_WEAPON
+    PAD::ENABLE_CONTROL_ACTION(0, 45, TRUE); // INPUT_RELOAD
+    PAD::ENABLE_CONTROL_ACTION(0, 257, TRUE); // INPUT_ATTACK2
+    PAD::ENABLE_CONTROL_ACTION(0, 263, TRUE); // INPUT_MELEE_ATTACK1
+    PAD::ENABLE_CONTROL_ACTION(0, 264, TRUE); // INPUT_MELEE_ATTACK2
+}
+
 static void tickNoClip() {
+    Ped ped = PLAYER::PLAYER_PED_ID();
     Entity e = currentEntity();
     if (g_entity && g_entity != e) restoreEntity(g_entity);
     g_entity = e;
@@ -61,6 +73,9 @@ static void tickNoClip() {
     ENTITY::SET_ENTITY_COLLISION(e, FALSE, FALSE);
     ENTITY::SET_ENTITY_HAS_GRAVITY(e, FALSE);
     ENTITY::SET_ENTITY_VELOCITY(e, 0.0f, 0.0f, 0.0f);
+
+    // Do not let noclip suppress normal weapon controls.
+    keepWeaponControlsEnabled();
 
     Vector3 pos = ENTITY::GET_ENTITY_COORDS(e, TRUE);
     Vector3 forward{}, right{};
@@ -81,9 +96,11 @@ static void tickNoClip() {
     pos = add3(pos, delta);
     ENTITY::SET_ENTITY_COORDS_NO_OFFSET(e, pos.x, pos.y, pos.z, FALSE, FALSE, FALSE);
 
-    // Face away from the camera so the player's back stays toward the camera,
-    // matching third-person FiveM-style noclip movement.
-    if ((GetAsyncKeyState('W') | GetAsyncKeyState('S') | GetAsyncKeyState('A') | GetAsyncKeyState('D')) & 0x8000) {
+    // Keep the player's back toward the camera during normal flight.
+    // While aiming/shooting, let GTA control the ped's aiming orientation.
+    const bool aiming = PAD::IS_CONTROL_PRESSED(0, 25) || PAD::IS_CONTROL_PRESSED(0, 24);
+    if (!aiming && e == ped &&
+        ((GetAsyncKeyState('W') | GetAsyncKeyState('S') | GetAsyncKeyState('A') | GetAsyncKeyState('D')) & 0x8000)) {
         const Vector3 rot = CAM::GET_GAMEPLAY_CAM_ROT(2);
         ENTITY::SET_ENTITY_HEADING(e, normalizeHeading(rot.z + 180.0f));
     }
