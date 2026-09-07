@@ -12,10 +12,10 @@ jobs:
       - name: Checkout Arabic overlay
         uses: actions/checkout@v4
 
-      - name: Clone MenyooSP Development with submodules
+      - name: Clone stable MenyooSP with submodules
         shell: pwsh
         run: |
-          git clone --recurse-submodules --branch Development https://github.com/itsjustcurtis/MenyooSP.git src
+          git clone --recurse-submodules --branch v2.5.0-a2 https://github.com/itsjustcurtis/MenyooSP.git src
 
       - name: Decode and apply Arabic Unicode modifications
         shell: pwsh
@@ -28,6 +28,10 @@ jobs:
           Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\Menu\ArabicTextRenderer.h" "Solution\source\Menu\ArabicTextRenderer.h" -Force
           Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\Menu\ArabicTextRenderer.cpp" "Solution\source\Menu\ArabicTextRenderer.cpp" -Force
           Copy-Item "$env:RUNNER_TEMP\arabic-overlay\Solution\source\_Build\bin\Release\menyooStuff\Language\Arabic.json" "Solution\source\_Build\bin\Release\menyooStuff\Language\Arabic.json" -Force
+          $renderer = "Solution\source\Menu\ArabicTextRenderer.cpp"
+          $text = Get-Content $renderer -Raw
+          $text = $text.Replace('std::max(14.0f, display.y * cmd.sizeNorm)', '(std::max)(14.0f, display.y * cmd.sizeNorm)')
+          Set-Content -Path $renderer -Value $text -Encoding utf8
 
       - name: Setup MSVC x64
         uses: ilammy/msvc-dev-cmd@v1
